@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+            
+        {
+            "name": "(gdb) 启动",
+            "type": "cppdbg",
+            "request": "launch",
+            // "program": "${workspaceFolder}/out-shared/db_bench",
+            "program": "${workspaceFolder}/out-static/db_bench",
+            "args": ["--db=/home/yql/ssd","--num=10000000","--value_size=1024","--benchmarks=fillrandom,readrandom,stats"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask":"build",
+            "setupCommands": [
+                {
+                    "description": "为 gdb 启用整齐打印",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

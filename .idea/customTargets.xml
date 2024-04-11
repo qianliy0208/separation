@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CLionExternalBuildManager">
+    <target id="4239174f-4bdc-4416-9b23-2f3a16beaa1e" name="Unnamed" defaultType="MAKE">
+      <configuration id="6352d170-1756-4228-9a2f-1ad3341b7c0a" name="Unnamed">
+        <build type="MAKE">
+          <make targetName="out-static/db_bench" />
+        </build>
+      </configuration>
+    </target>
+  </component>
+</project>
