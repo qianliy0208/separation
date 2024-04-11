@@ -127,7 +127,7 @@ class MemTableInserter : public WriteBatch::Handler {
 
   ////////////////////////////////////////////////
   virtual void Put(const Slice& key, const Slice& value) {
-    ZoneNumber zone = cur_zone_;
+    ZoneNumber zone;
     std::string skey = key.ToString();
 
     //std::unordered_map<std::string, ZoneNumber>::iterator result = key_zone_map_.find(skey);
@@ -136,7 +136,6 @@ class MemTableInserter : public WriteBatch::Handler {
    // bool has_mapped = (result != key_zone_map_.end());
     bool is_reserved = false;
     if (zone != INT64_MAX) {                ///          写入逻辑
-      zone = key_zone_map_[skey];
       is_reserved = (zone > 0 && zone <= config::kMaxReservedZoneNumber);   // 是否保留区域
       if (!is_reserved) {                //在冷区域，重新分配保留区域号
         zone = cur_reserved_zone_;
@@ -144,6 +143,7 @@ class MemTableInserter : public WriteBatch::Handler {
       }
       hot_mem_->Add(sequence_, kTypeValue, key, value, zone, (is_reserved ? kHot : kHotFirst));
     } else {
+      zone = cur_zone_;
       key_zone_map_.emplace(skey, zone);
       //key_zone_map_.insert({skey, zone});
       mem_->Add(sequence_, kTypeValue, key, value, zone, kCold);
@@ -152,7 +152,7 @@ class MemTableInserter : public WriteBatch::Handler {
     sequence_++;
   }
   virtual void Delete(const Slice& key) {
-    ZoneNumber zone = cur_zone_;
+    ZoneNumber zone;
     std::string skey = key.ToString();
     //std::unordered_map<std::string, ZoneNumber>::iterator result = key_zone_map_.find(skey);
    // bool has_mapped = (result != key_zone_map_.end());
@@ -160,7 +160,7 @@ class MemTableInserter : public WriteBatch::Handler {
     zone = key_zone_map_[skey];
     //if (has_mapped) {
     if (zone != UINT64_MAX) {
-      zone = key_zone_map_[skey];
+      //zone = key_zone_map_[skey];
       is_reserved = (zone > 0 && zone <= config::kMaxReservedZoneNumber);
       if (!is_reserved) {
         zone = cur_reserved_zone_;
@@ -168,6 +168,7 @@ class MemTableInserter : public WriteBatch::Handler {
       }
       mem_->Add(sequence_, kTypeDeletion, key, Slice(), zone, (is_reserved ? kHot : kHotFirst));
     } else {
+      zone = cur_zone_;
       key_zone_map_.insert(skey, zone);
       mem_->Add(sequence_, kTypeDeletion, key, Slice(), zone, kCold);
     }
