@@ -22,7 +22,9 @@
 #define STORAGE_LEVELDB_INCLUDE_WRITE_BATCH_H_
 
 #include <string>
+#include <cstdint>
 #include "leveldb/status.h"
+#include "../../db/PM_unordered_map.h"
 
 namespace leveldb {
 

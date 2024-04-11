@@ -11,7 +11,7 @@
 #include "leveldb/env.h"
 #include "leveldb/iterator.h"
 #include "util/coding.h"
-
+#include "PM_unordered_map.h"
 namespace leveldb {
 
 static Slice GetLengthPrefixedSlice(const char* data) {
@@ -22,7 +22,7 @@ static Slice GetLengthPrefixedSlice(const char* data) {
 }
 
 ///////////////////////////////////////
-MemTable::MemTable(const InternalKeyComparator& cmp, 
+/*MemTable::MemTable(const InternalKeyComparator& cmp,
                    ZoneNumber *z,
                    uint64_t *zs,
                    ZoneNumber *rz,
@@ -32,6 +32,22 @@ MemTable::MemTable(const InternalKeyComparator& cmp,
       refs_(0),
       table_(comparator_, &arena_),
       current_zone_(z), 
+      current_zone_size_(zs),
+      current_reserved_zone_(rz),
+      current_reserved_zone_size_(rzs),
+      key_zone_map_(kzm) {
+}*/
+//////////////////////////////////////////////////////////////////////////////
+MemTable::MemTable(const InternalKeyComparator& cmp,
+                   ZoneNumber *z,
+                   uint64_t *zs,
+                   ZoneNumber *rz,
+                   uint64_t *rzs,
+                   PMUnorderedMap *kzm)
+    : comparator_(cmp),
+      refs_(0),
+      table_(comparator_, &arena_),
+      current_zone_(z),
       current_zone_size_(zs),
       current_reserved_zone_(rz),
       current_reserved_zone_size_(rzs),

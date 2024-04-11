@@ -10,6 +10,7 @@
 #include "db/dbformat.h"
 #include "db/skiplist.h"
 #include "util/arena.h"
+#include "PM_unordered_map.h"
 
 ///////////////////////////////////////
 #include "util/fg_stats.h"
@@ -28,7 +29,11 @@ class MemTable {
   // is zero and the caller must call Ref() at least once.
   ///////////////////////////////////////
   explicit MemTable(const InternalKeyComparator& comparator, ZoneNumber *zone, uint64_t *zone_size, 
-                    ZoneNumber *reserved_zone, uint64_t *reserved_zone_size, std::unordered_map<std::string, ZoneNumber> *zone_map);
+                    ZoneNumber *reserved_zone, uint64_t *reserved_zone_size, PMUnorderedMap *zone_map);
+  //////////////////////////////////////////////////////////////////////////////
+ /* explicit MemTable(const InternalKeyComparator &comparator, ZoneNumber *zone, uint64_t *zone_size,
+                    ZoneNumber *reserved_zone, uint64_t *reserved_zone_size,
+                    std::unordered_map <std::string, ZoneNumber> *zone_map);*/
   ///////////////////////////////////////
 
   // Increase reference count.
@@ -95,7 +100,8 @@ class MemTable {
   uint64_t *current_zone_size_;
   ZoneNumber *current_reserved_zone_;
   uint64_t *current_reserved_zone_size_;
-  std::unordered_map<std::string, ZoneNumber> *key_zone_map_;
+ // std::unordered_map<std::string, ZoneNumber> *key_zone_map_;
+  PMUnorderedMap *key_zone_map_;
   ///////////////////////////////////////
 
   // No copying allowed

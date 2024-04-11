@@ -33,7 +33,7 @@
 #include "util/coding.h"
 #include "util/logging.h"
 #include "util/mutexlock.h"
-
+#include "PM_unordered_map.h"
 namespace leveldb {
 
 
@@ -45,7 +45,8 @@ const int kNumNonTableCacheFiles = 10;
   uint64_t cur_zone_size_ = 0;
   ZoneNumber cur_reserved_zone_ = 1;
   uint64_t cur_reserved_zone_size_ = 0;
-  std::unordered_map<std::string, ZoneNumber> key_zone_map_;
+  //std::unordered_map<std::string, ZoneNumber> key_zone_map_;
+  PMUnorderedMap key_zone_map_;
 ///////////////////////////////////////
 
 // Information kept for every waiting writer
@@ -1393,9 +1394,8 @@ Status DBImpl::Get(const ReadOptions& options,
     static int hit_hot = 0;
     static int hit_cold = 0;
     static int hit = 0;
-    if (key_zone_map_.find(skey) != key_zone_map_.end()) {
-      zone = key_zone_map_[skey];
-      if(zone > 0 && zone <= config::kMaxReservedZoneNumber) {
+    if ((zone = key_zone_map_[skey]) != UINT64_MAX) {
+     /* if(zone > 0 && zone <= config::kMaxReservedZoneNumber) {
           hit_hot ++;
       }else {
           hit_cold ++;
@@ -1406,7 +1406,7 @@ Status DBImpl::Get(const ReadOptions& options,
           std::cout << "hit_hot " << hit_hot << std::endl;
           std::cout << "hit_hot/hit_cold " << (double)hit_hot/hit_cold << std::endl;
           hit = 0;
-      }
+      }*/
     }
     // 添加：找不到返回
     else{
