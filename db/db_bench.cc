@@ -926,7 +926,6 @@ class Benchmark {
   ///////////////////////////////////////
 
   void DoWrite(ThreadState* thread, bool seq) {
-   // myStats.SetZeroToGenerateKey();
     if (num_ != FLAGS_num) {
       char msg[100];
       snprintf(msg, sizeof(msg), "(%d ops)", num_);
@@ -963,9 +962,9 @@ class Benchmark {
         bytes += value_size_ + strlen(key);
         thread->stats.FinishedSingleOp();
       }
-          uint64_t start1 = clock();
+
       s = db_->Write(write_options_, &batch);
-          end1 += clock() - start1;
+
 
           if (!s.ok()) {
         fprintf(stderr, "put error: %s\n", s.ToString().c_str());

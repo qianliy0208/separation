@@ -410,7 +410,7 @@ Status Version::Get(const ReadOptions& options,
       saver.user_key = user_key;
       saver.value = value;
       s = vset_->table_cache_->Get(options, level, f->number, f->file_size, &f->fmd_stage_, 
-                                   ikey, &saver, SaveValue);
+                                   ikey, &saver, SaveValue,f->type);
       if (!s.ok()) {
         return s;
       }
@@ -787,6 +787,7 @@ VersionSet::VersionSet(const std::string& dbname,
       table_cache_(table_cache),
       icmp_(*cmp),
       next_file_number_(2),
+      //next_hot_file_number_(2),
       manifest_file_number_(0),  // Filled by Recover()
       last_sequence_(0),
       log_number_(0),
@@ -856,7 +857,7 @@ Status VersionSet::LogAndApply(VersionEdit* edit, port::Mutex* mu) {
     assert(descriptor_file_ == NULL);
     new_manifest_file = DescriptorFileName(dbname_, manifest_file_number_);
     edit->SetNextFile(next_file_number_);
-    s = env_->NewWritableFile(new_manifest_file, &descriptor_file_);
+    s = env_->NewWritableFile(new_manifest_file, &descriptor_file_);            // 日誌心事寫manifest文件
     if (s.ok()) {
       descriptor_log_ = new log::Writer(descriptor_file_);
       s = WriteSnapshot(descriptor_log_);
@@ -1278,7 +1279,7 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
         const std::vector<FileMetaData*>& files = c->inputs_[which];
         for (size_t i = 0; i < files.size(); i++) {
           list[num++] = table_cache_->NewIterator(
-              options, files[i]->number, files[i]->file_size);
+              options, files[i]->number, files[i]->file_size, nullptr,files[i]->type);
         }
       } else {
         // Create concatenating iterator for the files from this level

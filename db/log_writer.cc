@@ -34,6 +34,7 @@ Writer::~Writer() {
 }
 
 Status Writer::AddRecord(const Slice& slice) {
+
   const char* ptr = slice.data();
   size_t left = slice.size();
 

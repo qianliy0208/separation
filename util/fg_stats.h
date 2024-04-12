@@ -169,12 +169,19 @@ struct FG_Stats {
         internal_get_time = 0;
         find_index_key_time = 0;
         internal_get_seek_data_block_time = 0;
-
+        flush_memtable_time = 0;
         for (int i = 0; i < 7; i ++) {
             add_block_count[i] = 0;
         }
-
+        flush_memtable_count = 0;
+        pick_compaction_time = 0;
+        pick_compaction_count = 0;
     }
+
+    uint64_t flush_memtable_time = 0;
+    int flush_memtable_count = 0;
+    uint64_t pick_compaction_time = 0;
+    int pick_compaction_count = 0;
 };
 
 

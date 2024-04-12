@@ -552,7 +552,7 @@ class PosixEnv : public Env {
 
   // BGThread() is the body of the background thread
   void BGThread();
-  static void* BGThreadWrapper(void* arg) {
+  static void* BGThreadWrapper(void* arg) {          // 背景線程
     reinterpret_cast<PosixEnv*>(arg)->BGThread();
     return NULL;
   }
@@ -608,15 +608,15 @@ PosixEnv::PosixEnv()
   PthreadCall("cvar_init", pthread_cond_init(&bgsignal_, NULL));
 }
 
-void PosixEnv::Schedule(void (*function)(void*), void* arg) {
+void PosixEnv::Schedule(void (*function)(void*), void* arg) {       //新線程
   PthreadCall("lock", pthread_mutex_lock(&mu_));
 
   // Start background thread if necessary
-  if (!started_bgthread_) {
+  if (!started_bgthread_) {                     //開啓一個背景線程
     started_bgthread_ = true;
     PthreadCall(
         "create thread",
-        pthread_create(&bgthread_, NULL,  &PosixEnv::BGThreadWrapper, this));
+        pthread_create(&bgthread_, NULL,  &PosixEnv::BGThreadWrapper, this));        // 開啓背景線程，不斷循環獲取。
   }
 
   // If the queue is currently empty, the background thread may currently be
@@ -626,14 +626,14 @@ void PosixEnv::Schedule(void (*function)(void*), void* arg) {
   }
 
   // Add to priority queue
-  queue_.push_back(BGItem());
+  queue_.push_back(BGItem());                       // 添加到任務隊列，等待執行
   queue_.back().function = function;
   queue_.back().arg = arg;
 
   PthreadCall("unlock", pthread_mutex_unlock(&mu_));
 }
 
-void PosixEnv::BGThread() {
+void PosixEnv::BGThread() {                              // 背景線程。不聽的從任務隊列中獲取任務執行
   while (true) {
     // Wait until there is an item that is ready to run
     PthreadCall("lock", pthread_mutex_lock(&mu_));

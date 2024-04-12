@@ -121,6 +121,8 @@ class DBImpl : public DB {
 
   Status WriteLevel0Table(MemTable* mem, VersionEdit* edit, Version* base)
       EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  Status WriteLevel0Table(MemTable* mem, VersionEdit* edit, Version* base,int type)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
   Status MakeRoomForWrite(bool force /* compact even if there is room? */)
       EXCLUSIVE_LOCKS_REQUIRED(mutex_);
@@ -155,6 +157,7 @@ class DBImpl : public DB {
   bool owns_info_log_;
   bool owns_cache_;
   const std::string dbname_;
+  const std::string dblogdir_;
 
   // table_cache_ provides its own synchronization
   TableCache* table_cache_;

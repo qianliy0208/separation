@@ -37,7 +37,7 @@ void VersionEdit::Clear() {
   deleted_files_.clear();
   new_files_.clear();
 }
-
+// 將編輯信息寫入manifest
 void VersionEdit::EncodeTo(std::string* dst) const {
   if (has_comparator_) {
     PutVarint32(dst, kComparator);
@@ -80,8 +80,10 @@ void VersionEdit::EncodeTo(std::string* dst) const {
     PutVarint32(dst, new_files_[i].first);  // level
     PutVarint64(dst, f.number);
     PutVarint64(dst, f.file_size);
+    PutVarint32(dst,f.type);
     PutLengthPrefixedSlice(dst, f.smallest.Encode());
     PutLengthPrefixedSlice(dst, f.largest.Encode());
+
   }
 }
 
@@ -184,6 +186,7 @@ Status VersionEdit::DecodeFrom(const Slice& src) {
         if (GetLevel(&input, &level) &&
             GetVarint64(&input, &f.number) &&
             GetVarint64(&input, &f.file_size) &&
+            GetVarint32(&input, &f.type) &&
             GetInternalKey(&input, &f.smallest) &&
             GetInternalKey(&input, &f.largest)) {
           new_files_.push_back(std::make_pair(level, f));

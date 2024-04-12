@@ -191,8 +191,8 @@ class VersionSet {
   uint64_t ManifestFileNumber() const { return manifest_file_number_; }
 
   // Allocate and return a new file number
-  uint64_t NewFileNumber() { return next_file_number_++; }
-
+  uint64_t NewFileNumber() { return next_file_number_++; } // 獲取新SST文煥號
+  //uint64_t NewHotFileNumber() { return next_hot_file_number_++; }
   // Arrange to reuse "file_number" unless a newer file number has
   // already been allocated.
   // REQUIRES: "file_number" was returned by a call to NewFileNumber().
@@ -303,6 +303,7 @@ class VersionSet {
   TableCache* const table_cache_;
   const InternalKeyComparator icmp_;
   uint64_t next_file_number_;
+  //  uint64_t next_hot_file_number_{10000000};
   uint64_t manifest_file_number_;
   uint64_t last_sequence_;
   uint64_t log_number_;
@@ -344,7 +345,7 @@ class Compaction {
   int num_input_files(int which) const { return inputs_[which].size(); }
 
   // Return the ith input file at "level()+which" ("which" must be 0 or 1).
-  FileMetaData* input(int which, int i) const { return inputs_[which][i]; }
+  FileMetaData* input(int which, int i) const { return inputs_[which][i]; }   // 保存挑選文件
 
   // Maximum size of files to build during this compaction.
   uint64_t MaxOutputFileSize() const { return max_output_file_size_; }
