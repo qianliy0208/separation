@@ -675,7 +675,7 @@ void DBImpl::PrintMyStats() {
   GetProperty(token, &stats);
   fprintf(stderr, "\n%s\n", stats.c_str());
 
-  fprintf(stderr, "Minor Compaction次数\t: %lld \n", static_cast<unsigned long long>(
+  fprintf(stderr, "M0 Compaction次数\t: %lld \n", static_cast<unsigned long long>(
                 fg_stats_->minor_compaction_count));
   fprintf(stderr, "L0 Compaction时间\t: %f \n\n", (
                   (fg_stats_->minor_compaction_time) * 1e-6));
@@ -860,12 +860,9 @@ void DBImpl::BackgroundCompaction() {
   if (imm_ != NULL) {
     //// <fg_stats>
     uint64_t bk_cm_start = env_->NowMicros();
-    uint64_t begin4 = clock();
     CompactMemTable();
-    time4 += clock() - begin4;
     fg_stats_->minor_compaction_time += env_->NowMicros() - bk_cm_start;
     fg_stats_->minor_compaction_count += 1;
-
     return;
   }
 
@@ -1528,6 +1525,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
 
   // May temporarily unlock and wait.
   Status status = MakeRoomForWrite(my_batch == NULL);
+  status = MakeRoomForHotWrite(my_batch == NULL);
 
   uint64_t last_sequence = versions_->LastSequence();
   Writer* last_writer = &w;

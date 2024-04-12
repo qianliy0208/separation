@@ -32,6 +32,7 @@ extern Status BuildTable(const std::string& dbname,
                          FileMetaData* meta, 
                          FG_Stats* fg_stats);
 
+
 }  // namespace leveldb
 
 #endif  // STORAGE_LEVELDB_DB_BUILDER_H_

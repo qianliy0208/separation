@@ -22,6 +22,8 @@ struct FileMetaData {
   InternalKey smallest;       // Smallest internal key served by table
   InternalKey largest;        // Largest internal key served by table
 
+  uint32_t type;  // 冷熱類型
+
   // 元数据处于的阶段
   // 0是普通阶段
   std::vector<uint8_t> fmd_stage_;
@@ -30,7 +32,7 @@ struct FileMetaData {
     fmd_stage_.push_back(0);
   }
   FileMetaData(const FileMetaData& f) : refs(f.refs), allowed_seeks(f.allowed_seeks), 
-              number(f.number), file_size(f.file_size), smallest(f.smallest), largest(f.largest) { 
+              number(f.number), file_size(f.file_size), smallest(f.smallest), largest(f.largest),type(0) {
     fmd_stage_.assign(f.fmd_stage_.begin(), f.fmd_stage_.end());
   }
 };
@@ -72,14 +74,16 @@ class VersionEdit {
   void AddFile(int level, uint64_t file,
                uint64_t file_size,
                const InternalKey& smallest,
-               const InternalKey& largest) {
+               const InternalKey& largest,int type = 0) {
     FileMetaData f;
     f.number = file;
     f.file_size = file_size;
     f.smallest = smallest;
     f.largest = largest;
+    f.type = type;
     new_files_.push_back(std::make_pair(level, f));
   }
+
 
   // Delete the specified "file" from the specified "level".
   void DeleteFile(int level, uint64_t file) {
@@ -100,6 +104,8 @@ class VersionEdit {
   uint64_t log_number_;
   uint64_t prev_log_number_;
   uint64_t next_file_number_;
+  //uint64_t next_hot_file_number_;
+
   SequenceNumber last_sequence_;
   bool has_comparator_;
   bool has_log_number_;

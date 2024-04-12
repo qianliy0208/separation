@@ -18,6 +18,8 @@
 
 namespace leveldb {
 
+
+// 迭代memtable創建一個文件
 Status BuildTable(const std::string& dbname,
                   Env* env,
                   const Options& options,
@@ -28,7 +30,6 @@ Status BuildTable(const std::string& dbname,
   Status s;
   meta->file_size = 0;
   iter->SeekToFirst();
-
   std::string fname = TableFileName(dbname, meta->number);
   if (iter->Valid()) {
     WritableFile* file;
@@ -96,5 +97,6 @@ Status BuildTable(const std::string& dbname,
   // fclose(zone_key);
   // ///////////////////////////////////////
 }
+
 
 }  // namespace leveldb

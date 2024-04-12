@@ -35,7 +35,7 @@ class TableCache {
   Iterator* NewIterator(const ReadOptions& options,
                         uint64_t file_number,
                         uint64_t file_size,
-                        Table** tableptr = NULL);
+                        Table** tableptr = NULL,uint32_t type = 0);
 
   // If a seek to internal key "k" in specified file finds an entry,
   // call (*handle_result)(arg, found_key, found_value).
@@ -47,7 +47,7 @@ class TableCache {
              std::vector<uint8_t>* fmd_stage, 
              const Slice& k,
              void* arg,
-             void (*handle_result)(void*, const Slice&, const Slice&));
+             void (*handle_result)(void*, const Slice&, const Slice&),int type = 0);
   ///////////////////////////////////////
 
   // Evict any entry for the specified file number
@@ -62,7 +62,8 @@ class TableCache {
   const Options* options_;
   Cache* cache_;
 
-  Status FindTable(uint64_t file_number, uint64_t file_size, Cache::Handle**);
+  Status FindTable(uint64_t file_number, uint64_t file_size, Cache::Handle**,int type = 0);
+
 };
 
 }  // namespace leveldb
