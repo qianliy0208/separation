@@ -299,6 +299,7 @@ class VersionSet {
 
   Env* const env_;
   const std::string dbname_;
+  const std::string colddbname_;
   const Options* const options_;
   TableCache* const table_cache_;
   const InternalKeyComparator icmp_;

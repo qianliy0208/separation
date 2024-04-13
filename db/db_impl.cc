@@ -74,14 +74,14 @@ struct DBImpl::CompactionState {
     uint64_t number;
     uint64_t file_size;
     InternalKey smallest, largest;
-
+    uint32_t  type;
     std::vector<uint8_t> fmd_stage;
 
     Output() { 
       fmd_stage.push_back(0);
     }
     Output(const Output& outp) : number(outp.number), file_size(outp.file_size), 
-            smallest(outp.smallest), largest(outp.largest) { 
+            smallest(outp.smallest), largest(outp.largest),type(outp.type) {
       fmd_stage.assign(outp.fmd_stage.begin(), outp.fmd_stage.end());
     }
   };
@@ -147,7 +147,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       owns_info_log_(options_.info_log != raw_options.info_log),
       owns_cache_(options_.block_cache != raw_options.block_cache),
       dbname_(dbname),
-      dblogdir_("/mnt/pmemdir/logdir"),            // 初始化db日誌文件路徑 爲PM
+      colddbname_("/tmp/cold"),            // 初始化db日誌文件路徑 爲PM
      //dblogdir_(dbname),            // 初始化db日誌文件路徑 爲PM
       db_lock_(NULL),
       shutting_down_(NULL),
@@ -316,36 +316,7 @@ void DBImpl::DeleteObsoleteFiles() {
                 }
             }
         }
-        // Log日誌文件從PM中刪除
-        std::vector<std::string> filenames1;
-        env_->GetChildren(dblogdir_, &filenames1);
-        for (size_t i = 0; i < filenames1.size(); i++) {
-            if (ParseFileName(filenames1[i], &number, &type)) {
-                bool keep = true;
-                switch (type) {
-                    case kLogFile:
-                        keep = ((number >= versions_->LogNumber()) ||
-                                (number == versions_->PrevLogNumber()));
-                        break;
-                    case kTableFile:
-                        keep = (live.find(number) != live.end());
-                        break;
-                    default:
-                        keep = false;
-                        break;
-                }
-
-                if (!keep) {
-                    if (type == kTableFile) {
-                        table_cache_->Evict(number);
-                    }
-                    Log(options_.info_log, "Delete type=%d #%lld\n",
-                        int(type),
-                        static_cast<unsigned long long>(number));
-                    env_->DeleteFile(dblogdir_ + "/" + filenames1[i]);
-                }
-            }
-        }
+        // 暫時不加
     }
 
     /*// 刪除過期文件
@@ -538,8 +509,7 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
   mutex_.AssertHeld();
 
   // Open the log file
-  //std::string fname = LogFileName(dbname_, log_number);
-  std::string fname = LogFileName(dblogdir_, log_number);
+  std::string fname = LogFileName(dbname_, log_number);
   SequentialFile* file;
   Status status = env_->NewSequentialFile(fname, &file);
   if (!status.ok()) {
@@ -649,8 +619,10 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
 
   return status;
 }
+
+// 寫L0層
 Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
-                                Version* base,int type) {
+                                Version* base,uint32_t hot) {
   mutex_.AssertHeld();
   const uint64_t start_micros = env_->NowMicros();
   FileMetaData meta;                                           // 文件元數據
@@ -658,7 +630,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
 
   meta.number = versions_->NewFileNumber();
 
-  meta.type = type;
+  meta.type = hot;
 
   pending_outputs_.insert(meta.number);
   Iterator* iter = mem->NewIterator();
@@ -669,14 +641,11 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   Status s;
   {
     mutex_.Unlock();
-
-        if(type) {
-            s = BuildTable(dblogdir_, env_, options_, table_cache_, iter, &meta, fg_stats_);
-        } else {
+        if(hot) {
             s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta, fg_stats_);
+        } else {
+            s = BuildTable(colddbname_, env_, options_, table_cache_, iter, &meta, fg_stats_);
         }
-
-
     mutex_.Lock();
   }
 
@@ -698,52 +667,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
       level = base->PickLevelForMemTableOutput(min_user_key, max_user_key);
     }
     edit->AddFile(level, meta.number, meta.file_size,
-                  meta.smallest, meta.largest,type);
-  }
-
-  CompactionStats stats;
-  stats.micros = env_->NowMicros() - start_micros;
-  stats.bytes_written = meta.file_size;
-  stats_[level].Add(stats);
-  return s;
-}
-Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
-                                Version* base) {
-  mutex_.AssertHeld();
-  const uint64_t start_micros = env_->NowMicros();
-  FileMetaData meta;
-  meta.number = versions_->NewFileNumber();
-  pending_outputs_.insert(meta.number);
-  Iterator* iter = mem->NewIterator();
-  Log(options_.info_log, "Level-0 table #%llu: started",
-      (unsigned long long) meta.number);
-
-  Status s;
-  {
-    mutex_.Unlock();
-    s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta, fg_stats_);
-    mutex_.Lock();
-  }
-
-  Log(options_.info_log, "Level-0 table #%llu: %lld bytes %s",
-      (unsigned long long) meta.number,
-      (unsigned long long) meta.file_size,
-      s.ToString().c_str());
-  delete iter;
-  pending_outputs_.erase(meta.number);
-
-
-  // Note that if file_size is zero, the file has been deleted and
-  // should not be added to the manifest.
-  int level = 0;
-  if (s.ok() && meta.file_size > 0) {
-    const Slice min_user_key = meta.smallest.user_key();
-    const Slice max_user_key = meta.largest.user_key();
-    if (base != NULL) {
-      level = base->PickLevelForMemTableOutput(min_user_key, max_user_key);
-    }
-    edit->AddFile(level, meta.number, meta.file_size,
-                  meta.smallest, meta.largest);
+                  meta.smallest, meta.largest,hot);
   }
 
   CompactionStats stats;
@@ -984,11 +908,11 @@ void DBImpl::MaybeScheduleCompaction() {
   mutex_.AssertHeld();
   if (bg_compaction_scheduled_) {            // 已經有壓縮，有工人在搬磚，就會結束
     // Already scheduled
-  }/* else if (shutting_down_.Acquire_Load()) {
+  } else if (shutting_down_.Acquire_Load()) {
     // DB is being deleted; no more background compactions
   } else if (!bg_error_.ok()) {
     // Already got an error; no more changes
-  }*/ else if (imm_ == NULL &&
+  } else if (imm_ == NULL &&
              hot_imm_ == NULL &&
              manual_compaction_ == NULL &&
              !versions_->NeedsCompaction()) {  // 不可變爲空 不做
@@ -1035,7 +959,7 @@ void DBImpl::BackgroundCompaction() {       // 背景壓縮。
     CompactHotMemTable();                                                 // flush hot_imm_;
     fg_stats_->minor_compaction_time += env_->NowMicros() - bk_cm_start;
     fg_stats_->minor_compaction_count += 1;
-    //return;
+    return;
   }
   ///////////////////////////////////////
 
@@ -1080,7 +1004,7 @@ void DBImpl::BackgroundCompaction() {       // 背景壓縮。
     FileMetaData* f = c->input(0, 0);
     c->edit()->DeleteFile(c->level(), f->number);
     c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
-                       f->smallest, f->largest,1);
+                       f->smallest, f->largest,f->type);
     status = versions_->LogAndApply(c->edit(), &mutex_);
     if (!status.ok()) {
       RecordBackgroundError(status);
@@ -1159,15 +1083,17 @@ Status DBImpl::OpenCompactionOutputFile(CompactionState* compact) {
     pending_outputs_.insert(file_number);
     CompactionState::Output out;
     out.number = file_number;
+    out.type = 1;
     out.smallest.Clear();
     out.largest.Clear();
+
     compact->outputs.push_back(out);
     mutex_.Unlock();
   }
   // 壓縮生成的文件放入PM
   // Make the output file
- // std::string fname = TableFileName(dbname_, file_number);
- std::string fname = TableFileName(dblogdir_, file_number);
+  std::string fname = TableFileName(dbname_, file_number);
+
   Status s = env_->NewWritableFile(fname, &compact->outfile);
   if (s.ok()) {
     compact->builder = new TableBuilder(options_, compact->outfile, fg_stats_);
@@ -1212,7 +1138,7 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
     // Verify that the table is usable
     Iterator* iter = table_cache_->NewIterator(ReadOptions(),
                                                output_number,
-                                               current_bytes, nullptr,1);
+                                               current_bytes, nullptr);
     s = iter->status();
     delete iter;
     if (s.ok()) {
@@ -1563,7 +1489,7 @@ Status DBImpl::Get(const ReadOptions& options,
     mutex_.Unlock();
 
     std::string skey = key.ToString();
-    uint32_t zone = 0;
+    uint64_t zone = 0;
     static int hit_hot = 0;
     static int hit_cold = 0;
     static int hit = 0;
@@ -1588,9 +1514,10 @@ Status DBImpl::Get(const ReadOptions& options,
     uint64_t time = clock();
     total_call++;
     char k[16];
-    snprintf(k, sizeof(k), "%08d", zone);
-
+    snprintf(k, sizeof(k), "%08d", zone);    /// todo:大bug，只能另闢蹊徑了
+    //memcpy(k,(unsigned char*)&zone,8);
     char zone_key[100];
+      // memcpy(zone_key, (char*)&zone, 8);
     memcpy(zone_key, k, 8);
     memcpy(zone_key + 8, key.data(), key.size());
     const Slice zkey(zone_key, key.size() + 8);
@@ -1699,6 +1626,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
     return w.status;
   }
   Status status = MakeRoomForWrite(my_batch == NULL);
+  status = MakeRoomForHotWrite(my_batch == NULL);
   uint64_t last_sequence = versions_->LastSequence();
   Writer* last_writer = &w;
   if (status.ok() && my_batch != NULL) {  // NULL batch is for compactions
@@ -1822,13 +1750,13 @@ Status DBImpl::MakeRoomForWrite(bool force) {
     } else if (
         allow_delay &&
         versions_->NumLevelFiles(0) >= config::kL0_SlowdownWritesTrigger) {     /// 0 層 太多文件
-      std::cout << "阻塞睡眠次數：" << ++sleep_num << std::endl;
+      //std::cout << "阻塞睡眠次數：" << ++sleep_num << std::endl;
       mutex_.Unlock();
       env_->SleepForMicroseconds(1000);                                         /// 睡眠
       allow_delay = false;  // Do not delay a single write more than once
       mutex_.Lock();
     } else if (!force &&
-               (mem_->ApproximateMemoryUsage() + hot_mem_->ApproximateMemoryUsage() <= options_.write_buffer_size /*&& hot_mem_->ApproximateMemoryUsage() <= options_.write_buffer_size*/)) {  /// mem 有空間
+               (mem_->ApproximateMemoryUsage() <= options_.write_buffer_size /*&& hot_mem_->ApproximateMemoryUsage() <= options_.write_buffer_size*/)) {  /// mem 有空間
       break;
     } else if (imm_ != NULL /*|| hot_imm_ != NULL*/) {                                    // 等待背景壓縮
       // We have filled up the current memtable, but the previous
@@ -1846,8 +1774,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       assert(versions_->PrevLogNumber() == 0);
       uint64_t new_log_number = versions_->NewFileNumber();     //創建新日誌文件
       WritableFile* lfile = NULL;
-
-      s = env_->NewWritableFile(LogFileName(dblogdir_, new_log_number), &lfile);
+      s = env_->NewWritableFile(LogFileName(dbname_, new_log_number), &lfile);
       if (!s.ok()) {
         // Avoid chewing through file number space in a tight loop.
         versions_->ReuseFileNumber(new_log_number);
@@ -1868,26 +1795,6 @@ Status DBImpl::MakeRoomForWrite(bool force) {
                             &cur_reserved_zone_size_, &key_zone_map_);
         ///////////////////////////////////////
         mem_->Ref();
-
-        hot_imm_ = hot_mem_;
-        has_hot_imm_.Release_Store(hot_imm_);
-        /////////////////////////////////////// Hot zone更新
-        cur_reserved_zone_ += 1;
-        cur_reserved_zone_size_ = 0;
-        hot_mem_ = new MemTable(internal_comparator_, &cur_zone_, &cur_zone_size_, &cur_reserved_zone_,
-                                &cur_reserved_zone_size_, &key_zone_map_);
-        ///////////////////////////////////////
-        hot_mem_->Ref();
-        /*if(hot_mem_->ApproximateMemoryUsage() > options_.write_buffer_size) {
-            hot_imm_ = hot_mem_;
-            has_hot_imm_.Release_Store(hot_imm_);
-            /////////////////////////////////////// zone 更新
-            cur_reserved_zone_ += 1;
-            cur_reserved_zone_size_ = 0;
-            hot_mem_ = new MemTable(internal_comparator_, &cur_zone_, &cur_zone_size_, &cur_reserved_zone_, &cur_reserved_zone_size_, &key_zone_map_);
-            ///////////////////////////////////////
-            hot_mem_->Ref();
-        }*/
       force = false;   // Do not force another compaction if have room
       MaybeScheduleCompaction();          // 重新創建一個memtable之後，可能要處理壓縮
     }
@@ -1936,7 +1843,7 @@ Status DBImpl::MakeRoomForHotWrite(bool force) {
       bg_cv_.Wait();
     } else {
       // Attempt to switch to a new memtable and trigger compaction of old
-      /*assert(versions_->PrevLogNumber() == 0);
+    /*  assert(versions_->PrevLogNumber() == 0);
       uint64_t new_log_number = versions_->NewFileNumber();
       WritableFile* lfile = NULL;
       s = env_->NewWritableFile(LogFileName(dbname_, new_log_number), &lfile);
@@ -2094,7 +2001,7 @@ Status DB::Open(const Options& options, const std::string& dbname,
     // Create new log and a corresponding memtable.
     uint64_t new_log_number = impl->versions_->NewFileNumber();
     WritableFile* lfile;
-    s = options.env->NewWritableFile(LogFileName(impl->dblogdir_, new_log_number),
+    s = options.env->NewWritableFile(LogFileName(dbname, new_log_number),
                                      &lfile);
     if (s.ok()) {
       edit.SetLogNumber(new_log_number);

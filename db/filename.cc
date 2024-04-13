@@ -31,6 +31,10 @@ std::string LogFileName(const std::string& name, uint64_t number) {
 
 std::string TableFileName(const std::string& name, uint64_t number) {
   assert(number > 0);
+  if(strcmp(name.data(),"/mnt/pmemdir/leveldbtest-0/dbbench") == 0 && number == 9) {
+
+      std::string str;
+  }
   return MakeFileName(name, number, "ldb");
 }
 

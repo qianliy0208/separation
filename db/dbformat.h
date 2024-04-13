@@ -46,7 +46,7 @@ static const int kMaxMemCompactLevel = 2;
 static const int kReadBytesPeriod = 1048576;
 
 ///////////////////////////////////////
-static const ZoneNumber kMaxReservedZoneNumber = 250000;
+static const ZoneNumber kMaxReservedZoneNumber = 0x8000000000000000;
 static const int kMaxZoneSize = 4096;
 ///////////////////////////////////////
 

@@ -783,6 +783,7 @@ VersionSet::VersionSet(const std::string& dbname,
                        FG_Stats* fg_stats)
     : env_(options->env),
       dbname_(dbname),
+      colddbname_("/tmp/cold"),
       options_(options),
       table_cache_(table_cache),
       icmp_(*cmp),
@@ -1127,7 +1128,7 @@ Status VersionSet::WriteSnapshot(log::Writer* log) {
     const std::vector<FileMetaData*>& files = current_->files_[level];
     for (size_t i = 0; i < files.size(); i++) {
       const FileMetaData* f = files[i];
-      edit.AddFile(level, f->number, f->file_size, f->smallest, f->largest);
+      edit.AddFile(level, f->number, f->file_size, f->smallest, f->largest,f->type);
     }
   }
 
@@ -1314,8 +1315,8 @@ Compaction* VersionSet::PickCompaction() {
       FileMetaData* f = current_->files_[level][i];
       if (compact_pointer_[level].empty() ||
           icmp_.Compare(f->largest.Encode(), compact_pointer_[level]) > 0) {
-        c->inputs_[0].push_back(f);
-        break;
+              c->inputs_[0].push_back(f);
+              break;
       }
     }
     if (c->inputs_[0].empty()) {

@@ -4,7 +4,7 @@
 
 
 #include <iostream>
-
+#include <cinttypes>
 #include "db/memtable.h"
 #include "db/dbformat.h"
 #include "leveldb/comparator.h"
@@ -109,8 +109,8 @@ class MemTableIterator: public Iterator {
 Iterator* MemTable::NewIterator() {
   return new MemTableIterator(&table_);
 }
-/*
-static std::string EncodeCharToBinary(char* c) {
+
+/*static std::string EncodeCharToBinary(char* c) {
 
     char bina[9];
     uint8_t * temp_num = reinterpret_cast<uint8_t*>(c);
@@ -138,8 +138,8 @@ static std::string GetBinaryOfString(char *src,int len) {
         has_done++;
     }
     return result;
-}
-*/
+}*/
+
 void MemTable::Add(SequenceNumber s, ValueType type,
                    const Slice& key,
                    const Slice& value,
@@ -163,10 +163,11 @@ void MemTable::Add(SequenceNumber s, ValueType type,
   char *p = EncodeVarint32(buf, internal_zone_key_size);
 
   char k[16];
-  snprintf(k, sizeof(k), "%08d", zone);
+  snprintf(k, sizeof(k), "%08" PRIu64, zone);
 
+  //  memcpy(p, (char*)&zone, 8);
   memcpy(p, k, 8);
- // std::cout << "zone序列号字符串：\t" << GetBinaryOfString(p,8) << std::endl;
+  //std::cout << "zone序列号字符串：\t" << GetBinaryOfString(p,8) << std::endl;
   p += 8;
   memcpy(p, key.data(), key_size);
   //std::cout << "16B key内容字符串：\t" << GetBinaryOfString(p,key_size) << std::endl;

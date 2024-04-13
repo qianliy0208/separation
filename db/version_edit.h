@@ -22,6 +22,8 @@ struct FileMetaData {
   InternalKey smallest;       // Smallest internal key served by table
   InternalKey largest;        // Largest internal key served by table
 
+
+  uint32_t type;
   // 元数据处于的阶段
   // 0是普通阶段
   std::vector<uint8_t> fmd_stage_;
@@ -30,8 +32,8 @@ struct FileMetaData {
     fmd_stage_.push_back(0);
   }
   FileMetaData(const FileMetaData& f) : refs(f.refs), allowed_seeks(f.allowed_seeks), 
-              number(f.number), file_size(f.file_size), smallest(f.smallest), largest(f.largest) { 
-    fmd_stage_.assign(f.fmd_stage_.begin(), f.fmd_stage_.end());
+              number(f.number), file_size(f.file_size), smallest(f.smallest), largest(f.largest),type(f.type) {
+    fmd_stage_.assign(f.fmd_stage_.begin(), f.fmd_stage_.end());    // 默認熱的
   }
 };
 
@@ -72,12 +74,13 @@ class VersionEdit {
   void AddFile(int level, uint64_t file,
                uint64_t file_size,
                const InternalKey& smallest,
-               const InternalKey& largest) {
+               const InternalKey& largest,uint32_t hot = 1) {
     FileMetaData f;
     f.number = file;
     f.file_size = file_size;
     f.smallest = smallest;
     f.largest = largest;
+    f.type = hot;
     new_files_.push_back(std::make_pair(level, f));
   }
 

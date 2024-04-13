@@ -36,6 +36,7 @@ TableCache::TableCache(const std::string& dbname,
                        FG_Stats* fg_stats)
     : env_(options->env),
       dbname_(dbname),
+      colddbname_("/tmp/cold"),
       options_(options),
       cache_(NewLRUCache(entries)), 
       fg_stats_(fg_stats) {
@@ -46,7 +47,7 @@ TableCache::~TableCache() {
 }
 
 Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
-                             Cache::Handle** handle) {
+                             Cache::Handle** handle,uint32_t hot) {
   //// <fg_stats>
   uint64_t ft_start = env_->NowMicros();
   
@@ -59,16 +60,22 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
 
   if (*handle == NULL) {                        // 缓存空 创建 打开新文件
 
-    std::string fname = TableFileName(dbname_, file_number);
-    RandomAccessFile* file = NULL;
-    Table* table = NULL;
-    s = env_->NewRandomAccessFile(fname, &file);
-    if (!s.ok()) {
-      std::string old_fname = SSTTableFileName(dbname_, file_number);
-      if (env_->NewRandomAccessFile(old_fname, &file).ok()) {
-        s = Status::OK();
+      std::string fname;
+      if (!hot) {
+          fname = TableFileName(colddbname_, file_number);
+      } else {
+          fname = TableFileName(dbname_, file_number);
       }
-    }
+
+      RandomAccessFile* file = NULL;
+      Table *table = NULL;
+      s = env_->NewRandomAccessFile(fname, &file);
+      if (!s.ok()) {
+          std::string old_fname = SSTTableFileName((hot ? dbname_ : colddbname_), file_number);
+          if (env_->NewRandomAccessFile(old_fname, &file).ok()) {
+              s = Status::OK();
+          }
+      }
     if (s.ok()) {
       s = Table::Open(*options_, file, file_size, &table);
     }
@@ -96,13 +103,13 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
 Iterator* TableCache::NewIterator(const ReadOptions& options,
                                   uint64_t file_number,
                                   uint64_t file_size,
-                                  Table** tableptr) {
+                                  Table** tableptr,uint32_t hot) {
   if (tableptr != NULL) {
     *tableptr = NULL;
   }
 
   Cache::Handle* handle = NULL;
-  Status s = FindTable(file_number, file_size, &handle);
+  Status s = FindTable(file_number, file_size, &handle,hot);
   if (!s.ok()) {
     return NewErrorIterator(s);
   }
@@ -123,7 +130,7 @@ Status TableCache::Get(const ReadOptions& options,
                        std::vector<uint8_t>* fmd_stage, 
                        const Slice& k,
                        void* arg,
-                       void (*saver)(void*, const Slice&, const Slice&)) {
+                       void (*saver)(void*, const Slice&, const Slice&),uint32_t type) {
   
   //// <fg_stats_>
   fg_stats_->table_cache_get_count += 1;
