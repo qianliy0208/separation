@@ -1393,9 +1393,10 @@ Status DBImpl::Get(const ReadOptions& options,
     static int hit_hot = 0;
     static int hit_cold = 0;
     static int hit = 0;
+    //uint64_t b = clock();
     if (key_zone_map_.find(skey) != key_zone_map_.end()) {
       zone = key_zone_map_[skey];
-      if(zone > 0 && zone <= config::kMaxReservedZoneNumber) {
+     /* if(zone > 0 && zone <= config::kMaxReservedZoneNumber) {
           hit_hot ++;
       }else {
           hit_cold ++;
@@ -1406,7 +1407,7 @@ Status DBImpl::Get(const ReadOptions& options,
           std::cout << "hit_hot " << hit_hot << std::endl;
           std::cout << "hit_hot/hit_cold " << (double)hit_hot/hit_cold << std::endl;
           hit = 0;
-      }
+      }*/
     }
     // 添加：找不到返回
     else{
@@ -1417,7 +1418,6 @@ Status DBImpl::Get(const ReadOptions& options,
     //char k[16];
 
     //snprintf(k, sizeof(k), "%08d", zone);
-
     char zone_key[100];
     //memcpy(zone_key, k, 8);
       for(int i = 0; i < 8;i++)
