@@ -1389,7 +1389,7 @@ Status DBImpl::Get(const ReadOptions& options,
     mutex_.Unlock();
 
     std::string skey = key.ToString();
-    uint32_t zone = 0;
+    uint64_t zone = 0;
     static int hit_hot = 0;
     static int hit_cold = 0;
     static int hit = 0;
@@ -1414,11 +1414,14 @@ Status DBImpl::Get(const ReadOptions& options,
     }
     uint64_t time = clock();
     total_call++;
-    char k[16];
-    snprintf(k, sizeof(k), "%08d", zone);
+    //char k[16];
+
+    //snprintf(k, sizeof(k), "%08d", zone);
 
     char zone_key[100];
-    memcpy(zone_key, k, 8);
+    //memcpy(zone_key, k, 8);
+      for(int i = 0; i < 8;i++)
+          zone_key[i] = ((char*)(&zone))[7 - i];
     memcpy(zone_key + 8, key.data(), key.size());
     const Slice zkey(zone_key, key.size() + 8);
 

@@ -17,7 +17,7 @@
 namespace leveldb {
 
 ///////////////////////////////////////
-typedef uint32_t ZoneNumber;
+typedef uint64_t ZoneNumber;
 ///////////////////////////////////////
 
 // Grouping of constants.  We may want to make some of these

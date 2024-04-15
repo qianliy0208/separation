@@ -22,7 +22,7 @@ static Slice GetLengthPrefixedSlice(const char* data) {
 }
 
 ///////////////////////////////////////
-MemTable::MemTable(const InternalKeyComparator& cmp, 
+MemTable::MemTable(const InternalKeyComparator& cmp,
                    ZoneNumber *z,
                    uint64_t *zs,
                    ZoneNumber *rz,
@@ -31,7 +31,7 @@ MemTable::MemTable(const InternalKeyComparator& cmp,
     : comparator_(cmp),
       refs_(0),
       table_(comparator_, &arena_),
-      current_zone_(z), 
+      current_zone_(z),
       current_zone_size_(zs),
       current_reserved_zone_(rz),
       current_reserved_zone_size_(rzs),
@@ -147,9 +147,10 @@ void MemTable::Add(SequenceNumber s, ValueType type,
   char *p = EncodeVarint32(buf, internal_zone_key_size);
 
   char k[16];
-  snprintf(k, sizeof(k), "%08d", zone);
-
-  memcpy(p, k, 8);
+ // snprintf(k, sizeof(k), "%08d", zone);
+ for(int i = 0; i < 8;i++)
+ p[i] = ((char*)(&zone))[7 - i];
+ // memcpy(p, k, 8);
  // std::cout << "zone序列号字符串：\t" << GetBinaryOfString(p,8) << std::endl;
   p += 8;
   memcpy(p, key.data(), key_size);
