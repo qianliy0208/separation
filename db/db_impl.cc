@@ -1387,11 +1387,13 @@ Status DBImpl::Get(const ReadOptions& options,
     mutex_.Unlock();
 
     std::string skey = key.ToString();
-    uint32_t zone = 0;
+    uint64_t zone = 0;
     static int hit_hot = 0;
     static int hit_cold = 0;
     static int hit = 0;
+
     if ((zone = key_zone_map_[skey]) != UINT64_MAX) {
+
      /* if(zone > 0 && zone <= config::kMaxReservedZoneNumber) {
           hit_hot ++;
       }else {
@@ -1409,6 +1411,7 @@ Status DBImpl::Get(const ReadOptions& options,
     else{
         return Status::NotFound(Slice());
     }
+
     uint64_t time = clock();
     total_call++;
     char k[16];
@@ -1416,6 +1419,7 @@ Status DBImpl::Get(const ReadOptions& options,
      // memcpy(k,&zone,8);
       char zone_key[100];
       EncodeFixed64Big(zone_key,zone);
+
       //memcpy(zone_key,k,8);
     //memcpy(zone_key, k, 8);
     memcpy(zone_key + 8, key.data(), key.size());
