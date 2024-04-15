@@ -1511,6 +1511,8 @@ Status DBImpl::Get(const ReadOptions& options,
     else{
         return Status::NotFound(Slice());
     }
+
+
     uint64_t time = clock();
     total_call++;
     //char k[16];
