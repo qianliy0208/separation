@@ -1513,12 +1513,11 @@ Status DBImpl::Get(const ReadOptions& options,
     }
     uint64_t time = clock();
     total_call++;
-    char k[16];
-    snprintf(k, sizeof(k), "%08d", zone);    /// todo:大bug，只能另闢蹊徑了
-    //memcpy(k,(unsigned char*)&zone,8);
+    //char k[16];
+
     char zone_key[100];
-      // memcpy(zone_key, (char*)&zone, 8);
-    memcpy(zone_key, k, 8);
+    EncodeFixed64Big(zone_key,zone);
+  //  memcpy(zone_key, k, 8);
     memcpy(zone_key + 8, key.data(), key.size());
     const Slice zkey(zone_key, key.size() + 8);
 
@@ -1764,6 +1763,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       Log(options_.info_log, "Current memtable full; waiting...\n");
         std::cout << "等待imm_次數：" << ++wait_num << std::endl;
         bg_cv_.Wait();
+
     } else if (versions_->NumLevelFiles(0) >= config::kL0_StopWritesTrigger) {  // 等待背景壓縮線程
       // There are too many level-0 files.
       Log(options_.info_log, "Too many L0 files; waiting...\n");

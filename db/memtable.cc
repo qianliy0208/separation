@@ -162,11 +162,11 @@ void MemTable::Add(SequenceNumber s, ValueType type,
   // char* p = EncodeVarint32(buf, internal_key_size);
   char *p = EncodeVarint32(buf, internal_zone_key_size);
 
-  char k[16];
-  snprintf(k, sizeof(k), "%08" PRIu64, zone);
+  //char k[16];
+  //snprintf(k, sizeof(k), "%08" PRIu64, zone);
 
-  //  memcpy(p, (char*)&zone, 8);
-  memcpy(p, k, 8);
+  EncodeFixed64Big(p,zone);
+  //memcpy(p, k, 8);
   //std::cout << "zone序列号字符串：\t" << GetBinaryOfString(p,8) << std::endl;
   p += 8;
   memcpy(p, key.data(), key_size);
