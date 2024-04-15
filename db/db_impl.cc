@@ -1531,6 +1531,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
 
   // May temporarily unlock and wait.
   Status status = MakeRoomForWrite(my_batch == NULL);
+  status = MakeRoomForHotWrite(my_batch == NULL);
 
   uint64_t last_sequence = versions_->LastSequence();
   Writer* last_writer = &w;
