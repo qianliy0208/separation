@@ -1412,10 +1412,12 @@ Status DBImpl::Get(const ReadOptions& options,
     uint64_t time = clock();
     total_call++;
     char k[16];
-    snprintf(k, sizeof(k), "%08d", zone);
-
-    char zone_key[100];
-    memcpy(zone_key, k, 8);
+    //snprintf(k, sizeof(k), "%08d", zone);
+     // memcpy(k,&zone,8);
+      char zone_key[100];
+      EncodeFixed64Big(zone_key,zone);
+      //memcpy(zone_key,k,8);
+    //memcpy(zone_key, k, 8);
     memcpy(zone_key + 8, key.data(), key.size());
     const Slice zkey(zone_key, key.size() + 8);
 

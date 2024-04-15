@@ -16,7 +16,13 @@ void EncodeFixed32(char* buf, uint32_t value) {
     buf[3] = (value >> 24) & 0xff;
   }
 }
+void EncodeFixed64Big(char* buf,uint64_t  value) {
 
+    for(int i = 0;i < 8;i++) {
+        buf[i] = ((char*)&value)[7 - i];
+    }
+
+}
 void EncodeFixed64(char* buf, uint64_t value) {
   if (port::kLittleEndian) {
     memcpy(buf, &value, sizeof(value));

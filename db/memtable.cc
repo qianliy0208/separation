@@ -109,7 +109,6 @@ class MemTableIterator: public Iterator {
 Iterator* MemTable::NewIterator() {
   return new MemTableIterator(&table_);
 }
-/*
 static std::string EncodeCharToBinary(char* c) {
 
     char bina[9];
@@ -139,7 +138,18 @@ static std::string GetBinaryOfString(char *src,int len) {
     }
     return result;
 }
-*/
+
+static std::string GetBinaryOfUint64_t(uint64_t val) {
+    char bina[65];
+    char* cur = bina + 64;
+    *cur = '/0';
+    while(cur!=bina) {
+        *(--cur) = '0' + (val%2);
+        val >>= 1;
+    }
+    return std::string(bina,64);
+}
+
 void MemTable::Add(SequenceNumber s, ValueType type,
                    const Slice& key,
                    const Slice& value,
@@ -156,17 +166,20 @@ void MemTable::Add(SequenceNumber s, ValueType type,
   // 八字节给存储域key
   size_t internal_zone_key_size = key_size + 16;
   const size_t encoded_len =
-      VarintLength(internal_zone_key_size) + internal_zone_key_size +
-      VarintLength(val_size) + val_size;
+  VarintLength(internal_zone_key_size) + internal_zone_key_size +
+  VarintLength(val_size) + val_size;
   char* buf = arena_.Allocate(encoded_len);
   // char* p = EncodeVarint32(buf, internal_key_size);
   char *p = EncodeVarint32(buf, internal_zone_key_size);
 
   char k[16];
-  snprintf(k, sizeof(k), "%08d", zone);
+  //snprintf(k, sizeof(k), "%08d", zone);
 
-  memcpy(p, k, 8);
- // std::cout << "zone序列号字符串：\t" << GetBinaryOfString(p,8) << std::endl;
+  EncodeFixed64Big(p,zone);
+  //memcpy(p,k,8);
+ /* std::cout << "zone:" << zone << std::endl;
+  std::cout << "zone binary:        " << GetBinaryOfUint64_t(zone) << std::endl;
+  std::cout << "zone序列号字符串：\t" << GetBinaryOfString(p, 8) << std::endl;*/
   p += 8;
   memcpy(p, key.data(), key_size);
   //std::cout << "16B key内容字符串：\t" << GetBinaryOfString(p,key_size) << std::endl;
@@ -174,7 +187,6 @@ void MemTable::Add(SequenceNumber s, ValueType type,
   p += key_size;
   EncodeFixed64(p, (s << 8) | type);
   //std::cout << "追加序列号（7B）+类型（1B）之后的字符串(即最终的key部分)：\t" << GetBinaryOfString(buf,33) << std::endl;
-
   p += 8;
   p = EncodeVarint32(p, val_size);
   memcpy(p, value.data(), val_size);
