@@ -18,7 +18,7 @@ class PMUnorderedMap {
 private :
     void * fd;
     size_t map_size;
-    // PM中存储的unordered_map;
+    // PM中存储的unordered_map;    如果存在，则保留的是zone号，不存在则保留更新次数。如果更新多
     std::unordered_map<std::string,uint64_t>* pm_map_ptr;
 
 public:
@@ -38,7 +38,7 @@ public:
      *
      */
 
-    void emplace(const std::string& key, uint64_t &zone);
+    void emplace(const std::string& key, uint64_t zone);
 
     void erase(const std::string& key);
     /*

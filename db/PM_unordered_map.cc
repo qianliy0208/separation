@@ -41,7 +41,7 @@ void PMUnorderedMap::insert(const std::string &key, uint64_t &value) {
         (*pm_map_ptr)[key] = value;
 
 }
-void PMUnorderedMap::emplace(const std::string &key, uint64_t &value) {
+void PMUnorderedMap::emplace(const std::string &key, uint64_t value) {
     // 插入键值对
     (*pm_map_ptr)[key] = value;
 
@@ -60,6 +60,6 @@ uint64_t PMUnorderedMap::operator[](const std::string &key) {
         if (it != pm_map_ptr->end()) {
             return it->second;
         }
-        return INT64_MAX;  // 返回一個最大，表示沒有
+        return INT64_MAX;  // 返回INT64_MAX:不存在；返回0，说明存在于热，从1开始，说明存在于冷
 
 }

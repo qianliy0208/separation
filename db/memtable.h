@@ -31,6 +31,9 @@ class MemTable {
   explicit MemTable(const InternalKeyComparator& comparator, ZoneNumber *zone, uint64_t *zone_size, 
                     ZoneNumber *reserved_zone, uint64_t *reserved_zone_size, PMUnorderedMap *zone_map);
   //////////////////////////////////////////////////////////////////////////////
+ explicit MemTable(const InternalKeyComparator& comparator, ZoneNumber *zone, uint64_t *zone_size,
+                    PMUnorderedMap *zone_map);
+  //////////////////////////////////////////////////////////////////////////////
  /* explicit MemTable(const InternalKeyComparator &comparator, ZoneNumber *zone, uint64_t *zone_size,
                     ZoneNumber *reserved_zone, uint64_t *reserved_zone_size,
                     std::unordered_map <std::string, ZoneNumber> *zone_map);*/

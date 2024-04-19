@@ -966,7 +966,7 @@ class Benchmark {
       s = db_->Write(write_options_, &batch);
 
 
-          if (!s.ok()) {
+       if (!s.ok()) {
         fprintf(stderr, "put error: %s\n", s.ToString().c_str());
         exit(1);
       }

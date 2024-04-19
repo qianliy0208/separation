@@ -41,10 +41,9 @@ const int kNumNonTableCacheFiles = 10;
 
 ///////////////////////////////////////
   // 存储域
-  ZoneNumber cur_zone_ = config::kMaxReservedZoneNumber + 1;
+  ZoneNumber cur_zone_ = 1;
   uint64_t cur_zone_size_ = 0;
-  ZoneNumber cur_reserved_zone_ = 1;
-  uint64_t cur_reserved_zone_size_ = 0;
+
   //std::unordered_map<std::string, ZoneNumber> key_zone_map_;
   PMUnorderedMap key_zone_map_;
 ///////////////////////////////////////
@@ -549,7 +548,7 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
     ///恢复
     if (mem == NULL) {
       ///////////////////////////////////////
-      mem = new MemTable(internal_comparator_, &cur_zone_, &cur_zone_size_, &cur_reserved_zone_, &cur_reserved_zone_size_, &key_zone_map_);
+      mem = new MemTable(internal_comparator_, &cur_zone_, &cur_zone_size_,&key_zone_map_);
       ///////////////////////////////////////
       mem->Ref();
     }
@@ -601,7 +600,7 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
       } else {
         // mem can be NULL if lognum exists but was empty.
         ///////////////////////////////////////
-        mem_ = new MemTable(internal_comparator_, &cur_zone_, &cur_zone_size_, &cur_reserved_zone_, &cur_reserved_zone_size_, &key_zone_map_);
+        mem_ = new MemTable(internal_comparator_, &cur_zone_, &cur_zone_size_, &key_zone_map_);
         ///////////////////////////////////////
         mem_->Ref();
       }
@@ -1493,7 +1492,17 @@ Status DBImpl::Get(const ReadOptions& options,
     static int hit_hot = 0;
     static int hit_cold = 0;
     static int hit = 0;
-    if ((zone = key_zone_map_[skey]) != UINT64_MAX) {
+    zone = key_zone_map_[skey];// 存在
+
+    switch (zone) {
+        case 0 :  // 冷
+            break;
+        case UINT64_MAX: // 不存在
+            return Status::NotFound(Slice());
+        default:
+            break;
+    }
+
      /* if(zone > 0 && zone <= config::kMaxReservedZoneNumber) {
           hit_hot ++;
       }else {
@@ -1506,37 +1515,35 @@ Status DBImpl::Get(const ReadOptions& options,
           std::cout << "hit_hot/hit_cold " << (double)hit_hot/hit_cold << std::endl;
           hit = 0;
       }*/
-    }
     // 添加：找不到返回
-    else{
-        return Status::NotFound(Slice());
-    }
 
 
     uint64_t time = clock();
     total_call++;
     //char k[16];
 
+
     char zone_key[100];
-    EncodeFixed64Big(zone_key,zone);
-  //  memcpy(zone_key, k, 8);
+    snprintf(zone_key,9,"%08d",zone);
+    // EncodeFixed64Big(zone_key,zone);
     memcpy(zone_key + 8, key.data(), key.size());
+
     const Slice zkey(zone_key, key.size() + 8);
 
     // First look in the memtable, then in the immutable memtable (if any).
     // LookupKey lkey(key, snapshot);
     LookupKey lkey(zkey, snapshot);
     ///////////////////////////////////////
-    if (hot_mem->Get(lkey, value, &s, fg_stats_)) {
+    if (!zone && hot_mem->Get(lkey, value, &s, fg_stats_)) {
       // Done
-    } else if (hot_imm != NULL && hot_imm->Get(lkey, value, &s, fg_stats_)) {
+    } else if (!zone && hot_imm != NULL && hot_imm->Get(lkey, value, &s, fg_stats_)) {
       // Done
-    } else if (mem->Get(lkey, value, &s, fg_stats_)) {
+    } else if (zone && mem->Get(lkey, value, &s, fg_stats_)) {
       // Done
-    } else if (imm != NULL && imm->Get(lkey, value, &s, fg_stats_)) {
+    } else if (zone && imm != NULL && imm->Get(lkey, value, &s, fg_stats_)) {
       // Done
     } else {
-      s = current->Get(options, lkey, value, &stats);
+      s = current->Get(options, lkey, value, &stats,(zone ? 0:1));
       have_stat_update = true;
     }
     ///////////////////////////////////////
@@ -1793,8 +1800,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
         /////////////////////////////////////// zone 更新
         cur_zone_ += 1;
         cur_zone_size_ = 0;
-        mem_ = new MemTable(internal_comparator_, &cur_zone_, &cur_zone_size_, &cur_reserved_zone_,
-                            &cur_reserved_zone_size_, &key_zone_map_);
+        mem_ = new MemTable(internal_comparator_, &cur_zone_, &cur_zone_size_, &key_zone_map_);
         ///////////////////////////////////////
         mem_->Ref();
       force = false;   // Do not force another compaction if have room
@@ -1862,9 +1868,8 @@ Status DBImpl::MakeRoomForHotWrite(bool force) {
       hot_imm_ = hot_mem_;
       has_hot_imm_.Release_Store(hot_imm_);
       /////////////////////////////////////// Hot zone更新
-      cur_reserved_zone_ += 1;
-      cur_reserved_zone_size_ = 0;
-      hot_mem_ = new MemTable(internal_comparator_, &cur_zone_, &cur_zone_size_, &cur_reserved_zone_, &cur_reserved_zone_size_, &key_zone_map_);
+
+      hot_mem_ = new MemTable(internal_comparator_, &cur_zone_, &cur_zone_size_, &key_zone_map_);
       ///////////////////////////////////////
       hot_mem_->Ref();
       force = false;   // Do not force another compaction if have room
@@ -2012,10 +2017,10 @@ Status DB::Open(const Options& options, const std::string& dbname,
       impl->log_ = new log::Writer(lfile);
       ///////////////////////////////////////
       impl->hot_mem_ = new MemTable(impl->internal_comparator_, &cur_zone_, &cur_zone_size_,
-              &cur_reserved_zone_, &cur_reserved_zone_size_, &key_zone_map_);
+               &key_zone_map_);
       impl->hot_mem_->Ref();
       impl->mem_ = new MemTable(impl->internal_comparator_, &cur_zone_, &cur_zone_size_,
-              &cur_reserved_zone_, &cur_reserved_zone_size_, &key_zone_map_);
+              &key_zone_map_);
       ///////////////////////////////////////
       impl->mem_->Ref();
     }

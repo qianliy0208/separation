@@ -137,7 +137,7 @@ Status TableCache::Get(const ReadOptions& options,
   uint64_t tcg_start = Env::Default()->NowMicros();
   
   Cache::Handle* handle = NULL;
-  Status s = FindTable(file_number, file_size, &handle);
+  Status s = FindTable(file_number, file_size, &handle,type);
   if (s.ok()) {
     Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
     s = t->InternalGet(options, level, fmd_stage, k, arg, saver);

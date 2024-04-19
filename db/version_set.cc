@@ -336,12 +336,52 @@ void Version::ForEachOverlapping(Slice user_key, Slice internal_key,
 Status Version::Get(const ReadOptions& options,
                     const LookupKey& k,
                     std::string* value,
-                    GetStats* stats) {
+                    GetStats* stats,int hot) {
   Slice ikey = k.internal_key();
   Slice user_key = k.user_key();
   const Comparator* ucmp = vset_->icmp_.user_comparator();
   Status s;
+  /*if(!hot) { // 二分法查找
+      //
+      uint64_t e = cold_files_.size() - 1;
+      uint64_t b = 0;
+      FileMetaData* file_target = nullptr;
+      while(e <= b) {
+          uint64_t bet = (e + b)/2;
+          FileMetaData* f = cold_files_[bet];
+          if (ucmp->Compare(user_key, f->smallest.user_key()) >= 0 &&
+              ucmp->Compare(user_key, f->largest.user_key()) <= 0) {
+           // 找到
+           file_target = f;
+           break;
+      }
+      if(file_target) { //找到，读取
+          Saver saver;
+          saver.state = kNotFound;
+          saver.ucmp = ucmp;
+          saver.user_key = user_key;
+          saver.value = value;
+          s = vset_->table_cache_->Get(options, level, f->number, f->file_size, &f->fmd_stage_,
+                                       ikey, &saver, SaveValue,f->type);
+          if (!s.ok()) {
+              return s;
+          }
+          switch (saver.state) {
+              case kNotFound:
+                  break;      // Keep searching in other files
+              case kFound:
+                  return s;
+              case kDeleted:
+                  s = Status::NotFound(Slice());  // Use empty error message for speed
+                  return s;
+              case kCorrupt:
+                  s = Status::Corruption("corrupted key for ", user_key);
+                  return s;
+          }
 
+      }
+      }
+  }*/
   stats->seek_file = NULL;
   stats->seek_file_level = -1;
   FileMetaData* last_file_read = NULL;
@@ -681,7 +721,7 @@ class VersionSet::Builder {
          ++iter) {
       const int level = iter->first;
       const uint64_t number = iter->second;
-      levels_[level].deleted_files.insert(number);
+      levels_[level].deleted_files.insert(number);          // 存储层信息和文件号
     }
 
     // Add new files
@@ -1346,7 +1386,11 @@ Compaction* VersionSet::PickCompaction() {
   }
 
   SetupOtherInputs(c);
-
+   // std::cout << "pickcompaction: " << std::endl;
+    /*for(auto& file:*(c->inputs_)) {
+      std::cout << file->number <<  " " << file->type << " " <<  file->largest.user_key().ToString() << " " <<  file->smallest.user_key().ToString() << std::endl;
+  }
+    std::cout << std::endl;*/
   return c;
 }
 

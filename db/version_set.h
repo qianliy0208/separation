@@ -73,7 +73,7 @@ class Version {
     int seek_file_level;
   };
   Status Get(const ReadOptions&, const LookupKey& key, std::string* val,
-             GetStats* stats);
+             GetStats* stats,int hot = 1);
 
   // Adds "stats" into the current state.  Returns true if a new
   // compaction may need to be triggered, false otherwise.
@@ -138,6 +138,8 @@ class Version {
 
   // List of files per level
   std::vector<FileMetaData*> files_[config::kNumLevels];
+
+  std::vector<FileMetaData*> cold_files_;
 
   // Next file to compact based on seek stats.
   FileMetaData* file_to_compact_;

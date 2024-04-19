@@ -53,6 +53,18 @@ MemTable::MemTable(const InternalKeyComparator& cmp,
       current_reserved_zone_size_(rzs),
       key_zone_map_(kzm) {
 }
+//////////////////////////////////////////////////////////////////////////////
+MemTable::MemTable(const InternalKeyComparator& cmp,
+                   ZoneNumber *z,
+                   uint64_t *zs,
+                   PMUnorderedMap *kzm)
+    : comparator_(cmp),
+      refs_(0),
+      table_(comparator_, &arena_),
+      current_zone_(z),
+      current_zone_size_(zs),
+      key_zone_map_(kzm) {
+}
 ///////////////////////////////////////
 
 MemTable::~MemTable() {
@@ -139,7 +151,10 @@ static std::string GetBinaryOfString(char *src,int len) {
     }
     return result;
 }*/
-
+/*
+ *  热 0
+ *  冷 1
+ */
 void MemTable::Add(SequenceNumber s, ValueType type,
                    const Slice& key,
                    const Slice& value,
@@ -152,22 +167,18 @@ void MemTable::Add(SequenceNumber s, ValueType type,
   //  value bytes  : char[value.size()]
   size_t key_size = key.size();
   size_t val_size = value.size();
-  // size_t internal_key_size = key_size + 8;
-  // 八字节给存储域key
-  size_t internal_zone_key_size = key_size + 16;
+  size_t internal_key_size = key_size + 16;
+
+
+
   const size_t encoded_len =
-      VarintLength(internal_zone_key_size) + internal_zone_key_size +
+      VarintLength(internal_key_size) + internal_key_size +
       VarintLength(val_size) + val_size;
   char* buf = arena_.Allocate(encoded_len);
-  // char* p = EncodeVarint32(buf, internal_key_size);
-  char *p = EncodeVarint32(buf, internal_zone_key_size);
 
-  //char k[16];
-  //snprintf(k, sizeof(k), "%08" PRIu64, zone);
-
-  EncodeFixed64Big(p,zone);
-  //memcpy(p, k, 8);
-  //std::cout << "zone序列号字符串：\t" << GetBinaryOfString(p,8) << std::endl;
+  char *p = EncodeVarint32(buf, internal_key_size);
+  //EncodeFixed64Big(p,zone);
+  snprintf(p,9,"%08d",zone);
   p += 8;
   memcpy(p, key.data(), key_size);
   //std::cout << "16B key内容字符串：\t" << GetBinaryOfString(p,key_size) << std::endl;
@@ -204,16 +215,9 @@ void MemTable::Add(SequenceNumber s, ValueType type,
       std::cout << "num_written_warm " << num_written_warm << std::endl;
       std::cout << "(double)num_written_hot_mem/cold_mem " << (double)(num_written_warm+num_written_hot)/num_written_cold << std::endl;
   }*/
-
   switch (ht)
   {
-  case kHotFirst:
-    *current_reserved_zone_size_ += encoded_len;
-    if (*current_reserved_zone_size_ > config::kMaxZoneSize) {
-      *current_reserved_zone_ += 1;
-      //assert(*current_reserved_zone_ <= config::kMaxReservedZoneNumber);
-      *current_reserved_zone_size_ = 0;
-    }
+  case kHot:
     break;
   case kCold:
     *current_zone_size_ += encoded_len;
@@ -225,7 +229,6 @@ void MemTable::Add(SequenceNumber s, ValueType type,
   default:
     break;
   }
-
 }
 
 ///////////////////////////////////////
